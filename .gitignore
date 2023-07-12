@@ -1,0 +1,7 @@
+materials
+Наброски_К_АНАЛИТУ.*
+*.aux
+*.log
+*.out
+*.gz
+doc/tex/*.pdf
