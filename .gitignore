@@ -5,3 +5,5 @@ materials
 *.out
 *.gz
 doc/tex/*.pdf
+*.bbl
+*.blg
