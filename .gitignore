@@ -7,3 +7,4 @@ materials
 doc/tex/*.pdf
 *.bbl
 *.blg
+*.zip
