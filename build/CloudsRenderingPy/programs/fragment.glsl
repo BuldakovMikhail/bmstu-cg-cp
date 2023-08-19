@@ -6,19 +6,25 @@
 #define iSteps 16
 #define jSteps 8
 
+const float AMBIENT_STRENGTH = 0.1;
+
 
 layout (location = 0) out vec4 fragColor;
 
 uniform vec2 u_resolution;
 uniform vec3 u_sun_pos;
 
-uniform sampler2D u_weatherMap;
+// uniform sampler2D u_weatherMap;
 
 uniform vec2 u_mouse;
 
-const vec3 camera_position = vec3(0, 6371000, 0);
-const float atmosphere_radius = 6471000;
-const float planet_radius = 6371000;
+const vec3 camera_position = vec3(0, 6400, 0);
+const float atmosphere_radius = 6435;
+const float min_cloud_radius = 6415;
+
+const float planet_radius = 6400;
+
+const vec3 EXTINCTION_MULT = vec3(0.8, 0.8, 1.0);
 
 const float FOV = 1; 
 const int isteps_count = 32;
@@ -359,16 +365,58 @@ float getHeightFraction(in vec3 inPosition, in vec2 cloudMinMax){
 
 
 float sampleCloudDensity(in vec3 position){
-    vec4 lowFrequencyNoises = stackable3DNoise(position);
-    float lowFreqFbm = (lowFrequencyNoises.g * 0.625) + (lowFrequencyNoises.b * 0.25) + (lowFrequencyNoises.a * 0.125);
+	vec4 lowFrequencyNoises = stackable3DNoise(position);
 
-    float baseCloud = remap(lowFrequencyNoises.r, -(1 - lowFreqFbm), 1, 0, 1);
+	float lowFreqFbm = lowFrequencyNoises.g * 0.675 + lowFrequencyNoises.b * 0.25 + lowFrequencyNoises.a * 0.125;
 
-    // vec4 color = texture(u_weatherMap, position.xy);
+	float baseCloud = remap(lowFrequencyNoises.r, - (1 - lowFreqFbm), 1, 0, 1);
 
-    float coff = saturate(getHeightFraction(position, vec2(6415000, 6435000))) * 0.5;
+	float height = getHeightFraction(position, vec2(planet_radius, atmosphere_radius));
 
-    return baseCloud * coff;
+	float densityGradient = saturate(height) * stackable3DNoise(position).g;
+
+	baseCloud *= densityGradient;
+
+	return baseCloud;
+}
+
+float HenyeyGreenstein(float g, float mu) {
+  float gg = g * g;
+	return (1.0 / (4.0 * PI))  * ((1.0 - gg) / pow(1.0 + gg - 2.0 * g * mu, 1.5));
+}
+
+float PhaseFunction(float g, float costh) {
+  return HenyeyGreenstein(g, costh);
+}
+
+vec3 MultipleOctaveScattering(float density, float mu) {
+  float attenuation = 0.2;
+  float contribution = 0.2;
+  float phaseAttenuation = 0.5;
+
+  float a = 1.0;
+  float b = 1.0;
+  float c = 1.0;
+  float g = 0.85;
+  const float scatteringOctaves = 4.0;
+  
+  vec3 luminance = vec3(0.0);
+
+  for (float i = 0.0; i < scatteringOctaves; i++) {
+    float phaseFunction = PhaseFunction(0.3 * c, mu);
+    vec3 beers = exp(-density * EXTINCTION_MULT * a);
+
+    luminance += b * phaseFunction * beers;
+
+    a *= attenuation;
+    b *= contribution;
+    c *= (1.0 - phaseAttenuation);
+  }
+  return luminance;
+}
+
+vec3 saturate3(vec3 x) {
+  return clamp(x, vec3(0.0), vec3(1.0));
 }
 
 vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, vec3 kMie, float shRlh, float shMie, float g) {
@@ -378,9 +426,15 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
 
     // Calculate the step size of the primary ray.
     vec2 p = rsi(r0, r, rAtmos);
-    if (p.x > p.y) return vec3(0,0,0);
+    if (p.x > p.y) return vec3(0);
     p.y = min(p.y, rsi(r0, r, rPlanet).x);
     float iStepSize = (p.y - p.x) / float(iSteps);
+
+	vec3 scattering = vec3(0.0);
+  	vec3 transmittance = vec3(1.0);
+	vec3 sunLight = vec3(1);
+	vec3 sunLightColour = sunLight * 50;
+	vec3 ambient = vec3(AMBIENT_STRENGTH * sunLightColour);
 
     // Initialize the primary ray time.
     float iTime = 0.0;
@@ -427,6 +481,10 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
         float jOdRlh = 0.0;
         float jOdMie = 0.0;
 
+
+		// // Clouds
+		float jDensCloud = 0;
+
         // Sample the secondary ray.
         for (int j = 0; j < jSteps; j++) {
 
@@ -434,15 +492,30 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
             vec3 jPos = iPos + pSun * (jTime + jStepSize * 0.5);
 
             // Calculate the height of the sample.
-            float jHeight = length(jPos) - rPlanet;
+    	    float jHeight = length(jPos) - rPlanet;
 
             // Accumulate the optical depth.
             jOdRlh += exp(-jHeight / shRlh) * jStepSize;
             jOdMie += exp(-jHeight / shMie) * jStepSize;
 
+			jDensCloud += sampleCloudDensity(jPos);
+
             // Increment the secondary ray time.
             jTime += jStepSize;
         }
+
+		float extinction = sampleCloudDensity(iPos);
+
+		vec3 beersLaw = MultipleOctaveScattering(jDensCloud, mu);
+  		vec3 powder = 1.0 - exp(-jDensCloud * 2.0 * EXTINCTION_MULT);
+
+		vec3 luminance = ambient + sunLight * beersLaw * mix(2.0 * powder, vec3(1.0), remap(mu, -1.0, 1.0, 0.0, 1.0));
+		vec3 itransmittance = exp(-extinction * iStepSize * EXTINCTION_MULT);
+		vec3 integScatt = extinction * (luminance - luminance * transmittance) / extinction;
+
+
+		scattering += transmittance * integScatt;
+		transmittance *= itransmittance;
 
         // Calculate attenuation.
         vec3 attnMie = exp(-kMie * (iOdMie + jOdMie));
@@ -458,17 +531,47 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
     }
 
     // Calculate and return the final color.
+	
+	transmittance = saturate3(transmittance);
+	vec3 pixel = iSun * (pRlh * kRlh * totalRlh + pMie * kMie * totalMie);
 
-    return iSun * (pRlh * kRlh * totalRlh + pMie * kMie * totalMie);
+
+	vec3 color = vec3(transmittance / (transmittance + 1));
+    
+	
+	
+	return color;
     //return iSun * (pMie * kMie * totalMie);
 }
 
-vec3 ray_marching(in vec2 uv){
+float cloudSampleDirectDensity(vec3 position, vec3 sunDir)
+{
+	float avrStep=(6435.0-6415.0)*0.01;
+	float sumDensity=0.0;
+	for(int i=0;i<4;i++)
+	{
+		float step=avrStep;
+		//для последней выборки умножаем шаг на 6
+		if(i==3)
+			step=step*6.0;
+		//обновляем позицию
+		position+=sunDir*step;
+		//получаем значение плотности, вызывая функцию, которая уже 
+                //рассматривалась ранее
+		float density=sampleCloudDensity(position)*step;
+		sumDensity+=density;
+	}
+	return sumDensity;
+}
+
+
+vec4 rayMarching(in vec2 uv){
 	vec3 ro = camera_position;
     vec3 lookAt = ro + u_sun_pos;
 	vec3 rd = getCam(ro, lookAt) * normalize(vec3(uv, FOV));
 
-	//vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, float kMie, float shRlh, float shMie, float g)
+	vec3 sunDir = normalize(u_sun_pos);
+	vec3 sunColor = vec3(1);
 	vec3 color = atmosphere(
 		rd,
 		ro,
@@ -483,9 +586,33 @@ vec3 ray_marching(in vec2 uv){
 		0.996
 		);
 
-    
 
-	return color;
+	// vec2 t = rsi(ro, rd, 6415);
+
+	// vec3 position = ro + rd * t.y;
+	// vec3 color=vec3(0.0);
+	// float transmittance=1.0;
+	// float step=(6435.0-6415.0)/64.0;
+	
+	// for(int i=0;i<iSteps;i++)
+	// {
+	// 	float density=sampleCloudDensity(position)*step;
+	// 	float sunDensity=cloudSampleDirectDensity(position, sunDir);
+
+	// 	float m2=exp(-0.5*sunDensity);
+	// 	float m3=1*density;
+	// 	float light=2.5*m2*m3;
+
+	// 	color+=sunColor*light*transmittance;
+	// 	transmittance*=exp(-0.5*density);
+
+	// 	position+= (rd*step);
+	// 	if(length(position)>6435.0)
+	// 		break;
+	// }
+	
+	
+	return vec4(color, 1);
 }
 
 
@@ -493,12 +620,14 @@ void main()
 {
 	vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
 
-    vec3 col = ray_marching(uv);
+	fragColor = rayMarching(uv);
 
-    col *= vec3(2, 1.8, 2); // color correction
+    // vec3 col = ray_marching(uv);
 
-    // gamma correction
-    vec3 tunedColor=col/(1+col);
-    tunedColor = pow(tunedColor, vec3(1.0/2.2));
-    fragColor = vec4(tunedColor, 1.0);
+    // col *= vec3(2, 1.8, 2); // color correction
+
+    // // gamma correction
+    // vec3 tunedColor=col/(1+col);
+    // tunedColor = pow(tunedColor, vec3(1.0/2.2));
+    // fragColor = vec4(tunedColor, 1);
 }

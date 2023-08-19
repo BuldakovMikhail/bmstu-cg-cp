@@ -19,15 +19,12 @@ class App(mglw.WindowConfig):
         self.program['u_resolution'] = self.window_size
         self.theta = 0
 
-        # textures
-        # img = Image.open('textures/weatherMap.png', mode='r')
-        # x = np.array(img.getdata(), dtype='<u1')
-        # x = np.flip(x, axis=1)
-
-        # weather_map = self.ctx.texture(img.size, 4, x.tobytes(), dtype='u1')
-
+        image = Image.open("textures/weatherMap2.png")
+        img_data = np.array(list(image.getdata()), np.uint8)
+        texture = self.ctx.texture(image.size, 3, img_data)
         # self.program['u_weatherMap'] = 0
-        # weather_map.use(location=0)
+
+        # texture.use(0)
 
     def render(self, time, frame_time):
         self.ctx.clear()
