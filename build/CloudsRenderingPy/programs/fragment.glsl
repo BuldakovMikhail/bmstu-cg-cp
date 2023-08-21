@@ -26,9 +26,8 @@ uniform float u_time;
 uniform vec3 u_sun_pos;
 
 uniform sampler2D u_weatherMap;
+uniform sampler3D u_lfNoise;
 
-
-#include noise.glsl
 
 const vec3 camPos = vec3(0, 6400, 0);
 const float maxCloud = 6435;
@@ -40,6 +39,15 @@ const float iSteps = 32;
 const float jSteps = 6;
 
 const float FOV = 1; 
+
+float saturate(float x) {
+  return clamp(x, 0.0, 1.0);
+}
+
+float remap(float value, float minValue, float maxValue, float newMinValue, float newMaxValue)
+{
+    return newMinValue+(value-minValue)/(maxValue-minValue)*(newMaxValue-newMinValue);
+}
 
 vec2 rsi(in vec3 ro, in vec3 rd, float sr){
 	float a = dot(rd, rd);
@@ -68,30 +76,19 @@ float cloudGetHeight(vec3 position){
 
 float cloudSampleDensity(vec3 position)
 {
-	// position.xz+=vec2(0.2f)*u_time;
+	position.xz+=vec2(0.2f)*u_time; 
+	float base = texture(u_lfNoise, position / 48).r;
+	// float fbm = lowFreq.g * 0.625 + lowFreq.b * 0.25 + lowFreq.a * 0.125;
 
-	vec4 weather=textureLod(u_weatherMap, position.xz/4096.0f+vec2(0.2, 0.1), 0);
-	float height=cloudGetHeight(position);
+	// float base = remap(lowFreq.r, -(1 - fbm), 1, 0, 1);
 	
-	float SRb=clamp(remap(height, 0, 0.07, 0, 1), 0, 1);
-	float SRt=clamp(remap(height, weather.b*0.2, weather.b, 1, 0), 0, 1);
-	float SA=SRt;
-	
-	float DRb=height*clamp(remap(height, 0, 0.15, 0, 1), 0, 1) + 0.5;
-	float DRt=height*clamp(remap(height, 0.9, 1, 1, 0), 0, 1);
-	float DA=weather.a*2*u_density; // Это ноль, но почему? drb 
+	float height = cloudGetHeight(position);
+	float coff = saturate(height) + 0.2;
 
-	// У Drb и Srb - 0, вопрос какого хера? 
-	
-	vec4 noise = stackable3DNoise(position/48.0f);
-	float final = remap(noise.x, (noise.y * 0.625 + noise.z*0.25 + noise.w * 0.125)-1.0, 1.0, 0.0, 1.0);
-	float SNsample=final; 
-	
-	float WMc=max(weather.r, clamp(u_coverage-0.5, 0, 1)*weather.g*2);
-	float d=clamp(remap(SNsample*SA, 1-u_coverage*WMc, 1, 0, 1), 0, 1)*DA;
-	
-	return d;
+	return base;
 }
+
+
 
 float HenyeyGreenstein(float g, float mu) {
   float gg = g * g;
@@ -107,8 +104,8 @@ float cloudSampleDirectDensity(vec3 position, vec3 sunDir)
 	{
 		float step=avrStep;
 		//для последней выборки умножаем шаг на 6
-		if(i==3)
-			step=step*6.0;
+		// if(i==3)
+		// 	step=step*6.0;
 		//обновляем позицию
 		position+=sunDir*step;
 		//получаем значение плотности, вызывая функцию, которая уже 
@@ -119,49 +116,160 @@ float cloudSampleDirectDensity(vec3 position, vec3 sunDir)
 	return sumDensity;
 }
 
+vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, float kMie, float shRlh, float shMie, float g) {
+    // Normalize the sun and view directions.
+    pSun = normalize(pSun);
+    r = normalize(r);
+
+    // Calculate the step size of the primary ray.
+    vec2 p = rsi(r0, r, rAtmos);
+    if (p.x > p.y) return vec3(0,0,0);
+    p.y = min(p.y, rsi(r0, r, rPlanet).x);
+    float iStepSize = (p.y - p.x) / float(iSteps);
+
+    // Initialize the primary ray time.
+    float iTime = 0.0;
+
+    // Initialize accumulators for Rayleigh and Mie scattering.
+    vec3 totalRlh = vec3(0,0,0);
+    vec3 totalMie = vec3(0,0,0);
+
+    // Initialize optical depth accumulators for the primary ray.
+    float iOdRlh = 0.0;
+    float iOdMie = 0.0;
+
+    // Calculate the Rayleigh and Mie phases.
+    float mu = dot(r, pSun);
+    float mumu = mu * mu;
+    float gg = g * g;
+    float pRlh = 3.0 / (16.0 * PI) * (1.0 + mumu);
+    float pMie = 3.0 / (8.0 * PI) * ((1.0 - gg) * (mumu + 1.0)) / (pow(1.0 + gg - 2.0 * mu * g, 1.5) * (2.0 + gg));
+
+    // Sample the primary ray.
+    for (int i = 0; i < iSteps; i++) {
+
+        // Calculate the primary ray sample position.
+        vec3 iPos = r0 + r * (iTime + iStepSize * 0.5);
+
+        // Calculate the height of the sample.
+        float iHeight = length(iPos) - rPlanet;
+
+        // Calculate the optical depth of the Rayleigh and Mie scattering for this step.
+        float odStepRlh = exp(-iHeight / shRlh) * iStepSize;
+        float odStepMie = exp(-iHeight / shMie) * iStepSize;
+
+        // Accumulate optical depth.
+        iOdRlh += odStepRlh;
+        iOdMie += odStepMie;
+
+        // Calculate the step size of the secondary ray.
+        float jStepSize = rsi(iPos, pSun, rAtmos).y / float(jSteps);
+
+        // Initialize the secondary ray time.
+        float jTime = 0.0;
+
+        // Initialize optical depth accumulators for the secondary ray.
+        float jOdRlh = 0.0;
+        float jOdMie = 0.0;
+
+        // Sample the secondary ray.
+        for (int j = 0; j < jSteps; j++) {
+
+            // Calculate the secondary ray sample position.
+            vec3 jPos = iPos + pSun * (jTime + jStepSize * 0.5);
+
+            // Calculate the height of the sample.
+            float jHeight = length(jPos) - rPlanet;
+
+            // Accumulate the optical depth.
+            jOdRlh += exp(-jHeight / shRlh) * jStepSize;
+            jOdMie += exp(-jHeight / shMie) * jStepSize;
+
+            // Increment the secondary ray time.
+            jTime += jStepSize;
+        }
+
+        // Calculate attenuation.
+        vec3 attn = exp(-(kMie * (iOdMie + jOdMie) + kRlh * (iOdRlh + jOdRlh)));
+
+        // Accumulate scattering.
+        totalRlh += odStepRlh * attn;
+        totalMie += odStepMie * attn;
+
+        // Increment the primary ray time.
+        iTime += iStepSize;
+
+    }
+
+    // Calculate and return the final color.
+    return iSun * (pRlh * kRlh * totalRlh + pMie * kMie * totalMie);
+}
+
 vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambientColor)
 {
 	vec2 t = rsi(ro, viewDir, minCloud);
 	vec3 position = ro + viewDir * t.y;
 
+	float avrStep = (maxCloud - minCloud) / 64;
+
 	// crossRaySphereOutFar(vec3(0.0, 6400.0, 0.0), viewDir, vec3(0.0), 6415.0, position);
 	
-	float avrStep=(6435.0-6415.0)/64.0;
-	
-	vec3 color=vec3(0.0);
-	float transmittance=1.0;
-	float density = 0.0;
+	vec3 iPos = position;
 
-	for(int i=0;i<128;i++)
-	{
-		density += cloudSampleDensity(position)*avrStep;
-		if(density>0.0)
-		{
-			float sunDensity=cloudSampleDirectDensity(position, sunDir);
-			float mu=max(0.0, dot(viewDir, sunDir));
-				
-			float m11=u_phaseInfluence*HenyeyGreenstein(mu, u_eccentrisy);
-			float m12=u_phaseInfluence2*HenyeyGreenstein(mu, u_eccentrisy2);
-			float m2=exp(-u_attenuation*sunDensity);
-			float m3=u_attenuation2*density;
-			float light=u_sunIntensity*(m11+m12)*m2*m3;
+	float density = 0;
+	// float bl = 1;
+
+	float mu = dot(viewDir, sunDir);
+
+	float l = 0;
+	vec3 color = vec3(0);
+	float transmittance = 1;
+
+	for (int i = 0; i < 128; ++i){
 		
-			color+=sunColor*light*transmittance;
-			transmittance*=exp(-u_attenuation*density);
-		}
-		position+=viewDir*avrStep;
-
-		if(transmittance<0.05 || length(position)>6435.0)
+		if (length(iPos) > maxCloud)
 			break;
-	}
-	
-	// float blending=1.0-exp(-max(0.0, dot(viewDir, vec3(0.0,1.0,0.0)))*u_fog);
-	float blending = 1;
-	blending=blending*blending*blending;
-	//return vec4(mix(ambientColor, color+ambientColor*u_ambient, blending), 1.0-transmittance);
+		density = cloudSampleDensity(iPos);
+		float sunDensity = cloudSampleDirectDensity(iPos, sunDir);
+		float bl = exp(-sunDensity * u_attenuation);
+		//float inScattering = HenyeyGreenstein(u_eccentrisy2, mu);	
+		float scatter = u_attenuation2 * density;
+		
+		l = bl*scatter;
 
-	return vec4(vec3(density), 1);
-}
+
+		color += sunColor*l*transmittance;
+		transmittance *= exp(-density * avrStep * u_attenuation);
+
+		iPos += viewDir * avrStep;
+			
+	}
+
+	// l *= 0.1;
+	
+	// vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, float kMie, float shRlh, float shMie, float g)
+	vec3 atmoColor = atmosphere(
+		viewDir,
+		ro,
+		sunDir,
+		42,
+		pRad,
+		maxCloud,
+		vec3(5.8e-6, 13.5e-6, 33.1e-6),
+		3e-6,
+		8e3,
+		1.2e3,
+		0.999
+	);
+
+	// vec3 color = sunColor;
+
+	// float bl = exp(-0.1 * density);
+	// return vec4(vec3(density / (density + 1)), 1);
+	// return vec4(vec3(l / (l + 1)), 1);
+	return vec4(atmoColor, 1);
+	// return vec4(vec3(transmittance / (transmittance + 1)), 1);
+}	
 
 void main()
 {
@@ -171,12 +279,12 @@ void main()
     vec3 lookAt = ro + u_sun_pos;
 	vec3 rd = getCam(ro, lookAt) * normalize(vec3(uv, FOV));
 
-    // vec3 col = rayMarching(uv);
+    vec4 col = mainMarching(ro, rd, normalize(u_sun_pos), vec3(1, 1, 1), vec3(0.3, 0.79, 1));
 
     // col *= vec3(2, 1.8, 2); // color correction
 
-    // // gamma correction
-    // vec3 tunedColor=col/(1+col);
-    // tunedColor = pow(tunedColor, vec3(1.0/2.2));
-    fragColor = mainMarching(ro, rd, normalize(u_sun_pos), vec3(1, 1, 1), vec3(0.3, 0.79, 1));
+    // gamma correction
+    vec3 tunedColor=col.rgb/(1+col.rgb);
+    tunedColor = pow(tunedColor, vec3(1.0/2.2));
+    fragColor = vec4(tunedColor, col.a);
 }
