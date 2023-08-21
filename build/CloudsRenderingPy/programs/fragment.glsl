@@ -4,7 +4,22 @@
 
 layout (location = 0) out vec4 fragColor;
 
+vec3 saturate3(vec3 x) {
+  return clamp(x, vec3(0.0), vec3(1.0));
+}
 
+float saturate(float height){
+	height -= 0.3;
+    height *= 130;
+    float v = 2 * 2 * 2 / (height * height  + 2 * 2);
+    v *= 30;
+    return clamp(v, 0, 1);
+}
+
+const float AMBIENT_STRENGTH = 0.1;
+const float CLOUD_LIGHT_MULTIPLIER = 50.0;
+const vec3 EXTINCTION_MULT = vec3(0.8, 0.8, 1.0);
+const float DUAL_LOBE_WEIGHT = 0.7;
 
 	uniform float u_density;
 	uniform float u_coverage;
@@ -40,9 +55,9 @@ const float jSteps = 6;
 
 const float FOV = 1; 
 
-float saturate(float x) {
-  return clamp(x, 0.0, 1.0);
-}
+// float saturate(float x) {
+//   return clamp(x, 0.0, 1.0);
+// }
 
 float remap(float value, float minValue, float maxValue, float newMinValue, float newMaxValue)
 {
@@ -70,22 +85,22 @@ mat3 getCam(vec3 ro, vec3 lookAt) {
     return mat3(camR, camU, camF);
 }
 
-float cloudGetHeight(vec3 position){
-	return (position.z - minCloud) / (maxCloud - minCloud);
+float cloudGetHeight(vec3 position, vec2 cloudMinMax){
+	return (position.z - cloudMinMax.x) / (cloudMinMax.y - cloudMinMax.x);
 }
 
-float cloudSampleDensity(vec3 position)
+float cloudSampleDensity(vec3 position, vec2 cloudMinMax)
 {
-	position.xz+=vec2(0.2f)*u_time; 
+	position.xz+=vec2(0.2)*u_time; 
 	float base = texture(u_lfNoise, position / 48).r;
 	// float fbm = lowFreq.g * 0.625 + lowFreq.b * 0.25 + lowFreq.a * 0.125;
 
 	// float base = remap(lowFreq.r, -(1 - fbm), 1, 0, 1);
 	
-	float height = cloudGetHeight(position);
-	float coff = saturate(height) + 0.2;
+	float height = cloudGetHeight(position, cloudMinMax);
+	float coff = saturate(height);
 
-	return base;
+	return base * coff;
 }
 
 
@@ -95,7 +110,7 @@ float HenyeyGreenstein(float g, float mu) {
 	return (1.0 / (4.0 * PI))  * ((1.0 - gg) / pow(1.0 + gg - 2.0 * g * mu, 1.5));
 }
 
-float cloudSampleDirectDensity(vec3 position, vec3 sunDir)
+float cloudSampleDirectDensity(vec3 position, vec3 sunDir, vec2 cloudMinMax)
 {
 	//определяем размер шага
 	float avrStep=(6435.0-6415.0)*0.01;
@@ -110,7 +125,7 @@ float cloudSampleDirectDensity(vec3 position, vec3 sunDir)
 		position+=sunDir*step;
 		//получаем значение плотности, вызывая функцию, которая уже 
                 //рассматривалась ранее
-		float density=cloudSampleDensity(position)*step;
+		float density=cloudSampleDensity(position, cloudMinMax)*step;
 		sumDensity+=density;
 	}
 	return sumDensity;
@@ -208,12 +223,64 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
     //return iSun * (pMie * kMie * totalMie);
 }
 
+float DualHenyeyGreenstein(float g, float costh) {
+  return mix(HenyeyGreenstein(-g, costh), HenyeyGreenstein(g, costh), DUAL_LOBE_WEIGHT);
+}
+
+float PhaseFunction(float g, float costh) {
+  return DualHenyeyGreenstein(g, costh);
+}
+
+vec3 MultipleOctaveScattering(float density, float mu) {
+  float attenuation = 0.2;
+  float contribution = 0.2;
+  float phaseAttenuation = 0.5;
+
+  float a = 1.0;
+  float b = 1.0;
+  float c = 1.0;
+  float g = 0.85;
+  const float scatteringOctaves = 4.0;
+  
+  vec3 luminance = vec3(0.0);
+
+  for (float i = 0.0; i < scatteringOctaves; i++) {
+    float phaseFunction = PhaseFunction(0.3 * c, mu);
+    vec3 beers = exp(-density * EXTINCTION_MULT * a);
+
+    luminance += b * phaseFunction * beers;
+
+    a *= attenuation;
+    b *= contribution;
+    c *= (1.0 - phaseAttenuation);
+  }
+  return luminance;
+}
+
+
+vec3 calculateLightEnergy(vec3 position, vec3 sunDir, float mu, vec2 cloudMinMax) {
+  
+  float density = cloudSampleDirectDensity(position, sunDir, cloudMinMax);
+  vec3 beersLaw = MultipleOctaveScattering(density, mu);
+  vec3 powder = 1.0 - exp(-density * 2.0 * EXTINCTION_MULT);
+
+return beersLaw * mix(2.0 * powder, vec3(1.0), remap(mu, -1.0, 1.0, 0.0, 1.0));
+}
+
 vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambientColor)
 {
 	vec2 t = rsi(ro, viewDir, minCloud);
 	vec3 position = ro + viewDir * t.y;
 
+	vec2 t2 = rsi(ro, viewDir, maxCloud);
+	vec3 position2 = ro + viewDir * t2.y;
+
+
 	float avrStep = (maxCloud - minCloud) / 64;
+
+	vec2 cloudMinMax;
+	cloudMinMax.x = position.z;
+	cloudMinMax.y = position2.z;
 
 	// crossRaySphereOutFar(vec3(0.0, 6400.0, 0.0), viewDir, vec3(0.0), 6415.0, position);
 	
@@ -225,27 +292,29 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
 	float mu = dot(viewDir, sunDir);
 
 	float l = 0;
-	vec3 color = vec3(0);
-	float transmittance = 1;
+	// vec3 color = vec3(0);
+
+	vec3 transmittance = vec3(1);
+	vec3 scattering = vec3(0);
+
+	vec3 sunLightColor = vec3(1.0);
+    vec3 sunLight = sunLightColor * CLOUD_LIGHT_MULTIPLIER;
+	vec3 ambient = vec3(AMBIENT_STRENGTH * sunLightColor);
 
 	for (int i = 0; i < 128; ++i){
 		
 		if (length(iPos) > maxCloud)
 			break;
-		density = cloudSampleDensity(iPos);
-		float sunDensity = cloudSampleDirectDensity(iPos, sunDir);
-		float bl = exp(-sunDensity * u_attenuation);
-		//float inScattering = HenyeyGreenstein(u_eccentrisy2, mu);	
-		float scatter = u_attenuation2 * density;
-		
-		l = bl*scatter;
+		density = cloudSampleDensity(iPos, cloudMinMax);
 
+		vec3 luminance = ambient + sunLight * calculateLightEnergy(iPos, sunDir, mu, cloudMinMax);
+		vec3 ttransmittance = exp(-density * avrStep * EXTINCTION_MULT * u_attenuation);
+		vec3 integScatt = density * (luminance - luminance * ttransmittance) / density;
 
-		color += sunColor*l*transmittance;
-		transmittance *= exp(-density * avrStep * u_attenuation);
+		scattering += transmittance * integScatt;
+		transmittance *= ttransmittance;  
 
 		iPos += viewDir * avrStep;
-			
 	}
 
 	// l *= 0.1;
@@ -266,12 +335,19 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
 		0.996
 		);;
 
-	// vec3 color = sunColor;
+	
+	transmittance = saturate3(transmittance);
+	
+	
+	
+	vec3 color = atmoColor.xyz * transmittance + scattering * u_attenuation;
+
+	return vec4(color, 1);
 
 	// float bl = exp(-0.1 * density);
 	// return vec4(vec3(density / (density + 1)), 1);
 	// return vec4(vec3(l / (l + 1)), 1);
-	return vec4(mix(color, atmoColor, transmittance), 1);
+	//return vec4(mix(color, atmoColor, transmittance), 1);
 	// return vec4(vec3(transmittance / (transmittance + 1)), 1);
 }	
 

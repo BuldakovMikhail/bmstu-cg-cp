@@ -71,7 +71,7 @@ class App(mglw.WindowConfig):
         self.safe_uniform('u_eccentrisy', 0.996)
         self.safe_uniform('u_phaseInfluence2', 0.5)
         self.safe_uniform('u_eccentrisy2', 0.49)
-        self.safe_uniform('u_attenuation', 0.02)
+        self.safe_uniform('u_attenuation', 0.1)
         self.safe_uniform('u_attenuation2', 0.02)
         self.safe_uniform('u_sunIntensity', 42)
         # self.safe_uniform('u_fog', 1)
