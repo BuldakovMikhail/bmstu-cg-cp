@@ -116,7 +116,7 @@ float cloudSampleDirectDensity(vec3 position, vec3 sunDir)
 	return sumDensity;
 }
 
-vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, float kMie, float shRlh, float shMie, float g) {
+vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, vec3 kMie, float shRlh, float shMie, float g) {
     // Normalize the sun and view directions.
     pSun = normalize(pSun);
     r = normalize(r);
@@ -142,8 +142,8 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
     float mu = dot(r, pSun);
     float mumu = mu * mu;
     float gg = g * g;
-    float pRlh = 3.0 / (16.0 * PI) * (1.0 + mumu);
-    float pMie = 3.0 / (8.0 * PI) * ((1.0 - gg) * (mumu + 1.0)) / (pow(1.0 + gg - 2.0 * mu * g, 1.5) * (2.0 + gg));
+    float pRlh = 3.0 * PI / (16.0) * (1.0 + mumu);
+    float pMie = 3.0 * PI / (8.0) * ((1.0 - gg) * (mumu + 1.0)) / (pow(1.0 + gg - 2.0 * mu * g, 1.5) * (2.0 + gg));
 
     // Sample the primary ray.
     for (int i = 0; i < iSteps; i++) {
@@ -190,11 +190,12 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
         }
 
         // Calculate attenuation.
-        vec3 attn = exp(-(kMie * (iOdMie + jOdMie) + kRlh * (iOdRlh + jOdRlh)));
+        vec3 attnMie = exp(-kMie * (iOdMie + jOdMie));
+		vec3 attnRlh = exp(-kRlh * (iOdRlh + jOdRlh));
 
         // Accumulate scattering.
-        totalRlh += odStepRlh * attn;
-        totalMie += odStepMie * attn;
+        totalRlh += odStepRlh * attnRlh;
+        totalMie += odStepMie * attnMie;
 
         // Increment the primary ray time.
         iTime += iStepSize;
@@ -202,7 +203,9 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
     }
 
     // Calculate and return the final color.
+
     return iSun * (pRlh * kRlh * totalRlh + pMie * kMie * totalMie);
+    //return iSun * (pMie * kMie * totalMie);
 }
 
 vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambientColor)
@@ -248,26 +251,27 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
 	// l *= 0.1;
 	
 	// vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, float kMie, float shRlh, float shMie, float g)
+	
 	vec3 atmoColor = atmosphere(
 		viewDir,
-		ro,
-		sunDir,
-		42,
-		pRad,
-		maxCloud,
+		vec3(0, 6371000, 0),
+		normalize(u_sun_pos),
+		2.5,
+		6371000,
+		6471000,
 		vec3(5.8e-6, 13.5e-6, 33.1e-6),
-		3e-6,
+		vec3(3e-6, 3e-6, 3e-6),
 		8e3,
 		1.2e3,
-		0.999
-	);
+		0.996
+		);;
 
 	// vec3 color = sunColor;
 
 	// float bl = exp(-0.1 * density);
 	// return vec4(vec3(density / (density + 1)), 1);
 	// return vec4(vec3(l / (l + 1)), 1);
-	return vec4(atmoColor, 1);
+	return vec4(mix(color, atmoColor, transmittance), 1);
 	// return vec4(vec3(transmittance / (transmittance + 1)), 1);
 }	
 
