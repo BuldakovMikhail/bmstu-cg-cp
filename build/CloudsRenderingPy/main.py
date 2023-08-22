@@ -29,9 +29,30 @@ def get_lf_noise():
     worleyFBM2 = stacks[2]*0.75 + stacks[3]*0.25
 
     noise = perlin((4, 4, 4), dens=32, seed=0)
-    fbm = worleyFBM0 * 0.625 + worleyFBM1 * 0.25 + worleyFBM2 * 0.125
-    return remap(noise, -(1 - fbm), 1, 0, 1).astype(np.float32)
+    perlinWorley = remap(noise * 1.9, worleyFBM0, 1.0, 0.0, 1.0)
 
+    fbm = worleyFBM0 * 0.625 + worleyFBM1 * 0.25 + worleyFBM2 * 0.125
+    return remap(perlinWorley, -(1 - fbm), 1, 0, 1).astype(np.float32)
+
+
+def get_hf_noise():
+    dens = 32
+    mul = [2, 4, 8, 16, 32]
+    # shape = np.array([128, 128])
+    stacks = []
+
+    for i in mul:
+        shape = (i, i, i)
+        w, c = worley(shape, dens=dens // i, seed=0)
+        w = w[0].T
+        stacks.append(w)
+
+    worleyFBM0 = stacks[0]*0.625 + stacks[1]*0.25 + stacks[2]*0.125
+    worleyFBM1 = stacks[1]*0.625 + stacks[2]*0.25 + stacks[3]*0.125
+    worleyFBM2 = stacks[2]*0.75 + stacks[3]*0.25
+    fbm = worleyFBM0 * 0.625 + worleyFBM1 * 0.25 + worleyFBM2 * 0.125
+
+    return np.asarray(fbm, dtype=np.float32, order='C')
 
 # np.stack((noise, worleyFBM0, worleyFBM1, worleyFBM2), axis=-1)
 
@@ -71,16 +92,23 @@ class App(mglw.WindowConfig):
         self.safe_uniform('u_eccentrisy', 0.996)
         self.safe_uniform('u_phaseInfluence2', 0.5)
         self.safe_uniform('u_eccentrisy2', 0.49)
-        self.safe_uniform('u_attenuation', 0.1)
+        self.safe_uniform('u_attenuation', 1)
         self.safe_uniform('u_attenuation2', 0.02)
         self.safe_uniform('u_sunIntensity', 42)
         # self.safe_uniform('u_fog', 1)
         self.safe_uniform('u_ambient',  0.2)
         self.fog = 1
 
+        self.safe_uniform('u_hfNoise', 2)
+        hf_noise = get_hf_noise()
+        print(hf_noise)
+        print(hf_noise.shape)
+        texture3 = self.ctx.texture3d((32, 32, 32), 1, hf_noise, dtype='f4')
+        texture3.use(2)
+
         image = Image.open("textures/weatherMap3.png")
         img_data = np.array(list(image.getdata()), np.uint8)
-        texture = self.ctx.texture(image.size, 3, img_data)
+        texture = self.ctx.texture(image.size, 4, img_data)
         self.safe_uniform('u_weatherMap', 0)
         texture.use(0)
 

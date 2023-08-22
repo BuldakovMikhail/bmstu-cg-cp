@@ -9,11 +9,13 @@ vec3 saturate3(vec3 x) {
 }
 
 float saturate(float height){
-	height -= 0.3;
-    height *= 130;
+	height -= 0.4;
+    height *= 100;
     float v = 2 * 2 * 2 / (height * height  + 2 * 2);
-    v *= 30;
+    v *= 100;
     return clamp(v, 0, 1);
+  
+  // return 1;
 }
 
 const float AMBIENT_STRENGTH = 0.1;
@@ -42,6 +44,7 @@ uniform vec3 u_sun_pos;
 
 uniform sampler2D u_weatherMap;
 uniform sampler3D u_lfNoise;
+uniform sampler3D u_hfNoise;
 
 
 const vec3 camPos = vec3(0, 6400, 0);
@@ -93,14 +96,24 @@ float cloudSampleDensity(vec3 position, vec2 cloudMinMax)
 {
 	position.xz+=vec2(0.2)*u_time; 
 	float base = texture(u_lfNoise, position / 48).r;
-	// float fbm = lowFreq.g * 0.625 + lowFreq.b * 0.25 + lowFreq.a * 0.125;
-
-	// float base = remap(lowFreq.r, -(1 - fbm), 1, 0, 1);
-	
 	float height = cloudGetHeight(position, cloudMinMax);
-	float coff = saturate(height) * texture(u_weatherMap, position.xz / 480).r;
+	
+  float coverage = texture(u_weatherMap, position.xz / 480).r;
+  float coff = saturate(height);
 
-	return base * coff;
+  base *= coff;
+
+  float baseCloudWithCoverage = remap(base, 1-coverage, 1, 0, 1);
+  // float baseCloudWithCoverage = base;
+  baseCloudWithCoverage *= coverage;
+
+  float hfFBM = texture(u_hfNoise, position / 48).r;
+  float hfNoiseModifier = mix(hfFBM, 1 - hfFBM, clamp(height * 10, 0, 1));
+
+  float finalCloud = remap(baseCloudWithCoverage, hfNoiseModifier * 0.2, 1, 0, 1);
+
+
+	return max(finalCloud, 0);
 }
 
 
