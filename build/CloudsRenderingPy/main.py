@@ -78,9 +78,9 @@ class App(mglw.WindowConfig):
         self.safe_uniform('u_ambient',  0.2)
         self.fog = 1
 
-        image = Image.open("textures/weatherMap.png")
+        image = Image.open("textures/weatherMap3.png")
         img_data = np.array(list(image.getdata()), np.uint8)
-        texture = self.ctx.texture(image.size, 4, img_data)
+        texture = self.ctx.texture(image.size, 3, img_data)
         self.safe_uniform('u_weatherMap', 0)
         texture.use(0)
 

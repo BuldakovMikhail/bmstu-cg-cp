@@ -98,7 +98,7 @@ float cloudSampleDensity(vec3 position, vec2 cloudMinMax)
 	// float base = remap(lowFreq.r, -(1 - fbm), 1, 0, 1);
 	
 	float height = cloudGetHeight(position, cloudMinMax);
-	float coff = saturate(height);
+	float coff = saturate(height) * texture(u_weatherMap, position.xz / 480).r;
 
 	return base * coff;
 }
@@ -275,6 +275,22 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
 	vec2 t2 = rsi(ro, viewDir, maxCloud);
 	vec3 position2 = ro + viewDir * t2.y;
 
+  vec3 atmoColor = atmosphere(
+  viewDir,
+  vec3(0, 6371000, 0),
+  normalize(u_sun_pos),
+  2.5,
+  6371000,
+  6471000,
+  vec3(5.8e-6, 13.5e-6, 33.1e-6),
+  vec3(3e-6, 3e-6, 3e-6),
+  8e3,
+  1.2e3,
+  0.996
+  );
+
+  if (position.y > position2.y)
+    return vec4(atmoColor, 1);
 
 	float avrStep = (maxCloud - minCloud) / 64;
 
@@ -307,40 +323,31 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
 			break;
 		density = cloudSampleDensity(iPos, cloudMinMax);
 
-		vec3 luminance = ambient + sunLight * calculateLightEnergy(iPos, sunDir, mu, cloudMinMax);
+    if (density > 0.01){
+      vec3 luminance = ambient + sunLight * calculateLightEnergy(iPos, sunDir, mu, cloudMinMax);
 		vec3 ttransmittance = exp(-density * avrStep * EXTINCTION_MULT * u_attenuation);
 		vec3 integScatt = density * (luminance - luminance * ttransmittance) / density;
 
 		scattering += transmittance * integScatt;
 		transmittance *= ttransmittance;  
+      if (length(transmittance) <= 0.01) {
+              transmittance = vec3(0.0);
+              break;
+      }
+    }
+
 
 		iPos += viewDir * avrStep;
 	}
 
-	// l *= 0.1;
-	
-	// vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, float kMie, float shRlh, float shMie, float g)
-	
-	vec3 atmoColor = atmosphere(
-		viewDir,
-		vec3(0, 6371000, 0),
-		normalize(u_sun_pos),
-		2.5,
-		6371000,
-		6471000,
-		vec3(5.8e-6, 13.5e-6, 33.1e-6),
-		vec3(3e-6, 3e-6, 3e-6),
-		8e3,
-		1.2e3,
-		0.996
-		);;
+
 
 	
 	transmittance = saturate3(transmittance);
 	
 	
 	
-	vec3 color = atmoColor.xyz * transmittance + scattering * u_attenuation;
+	vec3 color = atmoColor.xyz * transmittance + scattering;
 
 	return vec4(color, 1);
 
