@@ -273,7 +273,7 @@ vec3 MultipleOctaveScattering(float density, float mu) {
 
 vec3 calculateLightEnergy(vec3 position, vec3 sunDir, float mu, vec2 cloudMinMax) {
   
-  float density = cloudSampleDirectDensity(position, sunDir, cloudMinMax);
+  float density = cloudSampleDirectDensity(position, sunDir, cloudMinMax)* u_attenuation2;
   vec3 beersLaw = MultipleOctaveScattering(density, mu);
   vec3 powder = 1.0 - exp(-density * 2.0 * EXTINCTION_MULT);
 
@@ -328,7 +328,7 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
 
 	vec3 sunLightColor = vec3(1.0);
     vec3 sunLight = sunLightColor * CLOUD_LIGHT_MULTIPLIER;
-	vec3 ambient = vec3(AMBIENT_STRENGTH * sunLightColor);
+	vec3 ambient = vec3(AMBIENT_STRENGTH * sunLightColor) * u_ambient;
 
 	for (int i = 0; i < 128; ++i){
 		
@@ -376,7 +376,7 @@ void main()
 	vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
 
 	vec3 ro = camPos;
-    vec3 lookAt = ro + u_sun_pos;
+    vec3 lookAt = ro + vec3(0,0.5,1);
 	vec3 rd = getCam(ro, lookAt) * normalize(vec3(uv, FOV));
 
     vec4 col = mainMarching(ro, rd, normalize(u_sun_pos), vec3(1, 1, 1), vec3(0.3, 0.79, 1));
