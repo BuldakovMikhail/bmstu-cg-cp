@@ -89,7 +89,7 @@ mat3 getCam(vec3 ro, vec3 lookAt) {
 }
 
 float cloudGetHeight(vec3 position, vec2 cloudMinMax){
-	return (position.z - cloudMinMax.x) / (cloudMinMax.y - cloudMinMax.x);
+	return (position.y - minCloud) / (maxCloud - minCloud);
 }
 
 float cloudSampleDensity(vec3 position, vec2 cloudMinMax)
@@ -302,8 +302,8 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
   0.996
   );
 
-  if (position.y > position2.y)
-    return vec4(atmoColor, 1);
+  // if (position.y > position2.y)
+  //   return vec4(atmoColor, 1);
 
 	float avrStep = (maxCloud - minCloud) / 64;
 

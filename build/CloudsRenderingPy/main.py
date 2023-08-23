@@ -16,14 +16,13 @@ def remap(originalValue, originalMin, originalMax, newMin, newMax):
 def get_lf_noise():
     dens = 32
     stacks = []
-    mul = [2, 4, 8, 16, 32]
+    mul = [2, 4, 16, 32]
 
     for i in mul:
         shape = (4 * i, 4 * i, 4 * i)
         w, c = worley(shape, dens=dens // i, seed=0)
         w = w[0].T
         stacks.append(w)
-
     worleyFBM0 = stacks[0]*0.625 + stacks[1]*0.25 + stacks[2]*0.125
     worleyFBM1 = stacks[1]*0.625 + stacks[2]*0.25 + stacks[3]*0.125
     worleyFBM2 = stacks[2]*0.75 + stacks[3]*0.25
@@ -37,7 +36,7 @@ def get_lf_noise():
 
 def get_hf_noise():
     dens = 32
-    mul = [2, 4, 8, 16, 32]
+    mul = [4, 8, 16, 32]
     # shape = np.array([128, 128])
     stacks = []
 
@@ -85,8 +84,8 @@ class App(mglw.WindowConfig):
         # 	float ambient;
         # };
 
-        self.safe_uniform('u_density', 10)
-        self.safe_uniform('u_coverage', 0.7)
+        self.safe_uniform('u_density', 150)
+        self.safe_uniform('u_coverage', 1.2)
 
         self.safe_uniform('u_phaseInfluence', 0.5)
         self.safe_uniform('u_eccentrisy', 0.996)
