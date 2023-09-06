@@ -29,6 +29,26 @@
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{listings}
+
+
+\usepackage[normalem]{ulem} % \uline	
+\renewcommand{\underset}[2]{\ensuremath{\mathop{\mbox{#2}}\limits_{\mbox{\scriptsize #1}}}} % Use \underset in normal environment, not only in math
+\usepackage{xparse} % \NewDocumentCommand for creating custom commands
+
+
+% Write stuff under underlined text
+\NewDocumentCommand{\ulinetext}{O{3cm} O{c} m m} % O - optional; m - mandatory
+{\underset{#3}{\uline{\makebox[#1][#2]{#4}}}}
+
+% Test bold underline
+\NewDocumentCommand{\bolduline}{}{\bgroup\markoverwith
+	{\rule[-0.5ex]{2pt}{2pt}}\ULon}
+
+% Display numberless sections in toc
+\NewDocumentCommand{\snumberless}{m}
+{\section*{#1}\addcontentsline{toc}{section}{#1}}
+
+
 % Для листинга кода:
 \input{listings-glsl.prf}
 % optionally set GLSL as default language
