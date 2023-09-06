@@ -30,8 +30,10 @@
 \usepackage{xcolor}
 \usepackage{listings}
 % Для листинга кода:
+\input{listings-glsl.prf}
+% optionally set GLSL as default language
 \lstset{%
-	language=c++,   					% выбор языка для подсветки	
+	language=GLSL,   					% выбор языка для подсветки	
 	basicstyle=\small\sffamily,			% размер и начертание шрифта для подсветки кода
 	numbersep=5pt,
 	numbers=left,						% где поставить нумерацию строк (слева\справа)

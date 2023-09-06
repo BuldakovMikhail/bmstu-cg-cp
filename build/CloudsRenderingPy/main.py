@@ -129,7 +129,7 @@ class App(mglw.WindowConfig):
        # x, y, z = map(int, input().split(' '))
         self.theta += 0.0125
 
-        self.safe_uniform('u_sun_pos', (0, 0.5, m.cos(self.theta * 0.5)))
+        self.safe_uniform('u_sun_pos', (0, 0.5, 1))
         # print(self.y)
         self.quad.render(self.program)
 
