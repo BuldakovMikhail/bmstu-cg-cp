@@ -75,25 +75,33 @@
 \usetikzlibrary{datavisualization}
 \usetikzlibrary{datavisualization.formats.functions}
 \usepackage{graphicx}
+
+
+% Работа с изображениями и таблицами; переопределение названий по ГОСТу
+\usepackage{caption}
+\captionsetup[figure]{name={Рисунок},labelsep=endash}
+\captionsetup[table]{singlelinecheck=false, labelsep=endash}
+
+
 \newcommand{\imgw}[3] {
 	\begin{figure}[!ht]
 		\center{\includegraphics[width=#1]{assets/img/#2}}
 		\caption{#3}
-		\label{img:#2}
+		\label{img-#2}
 	\end{figure}
 }
 \newcommand{\img}[3] {
 	\begin{figure}[!ht]
 		\center{\includegraphics[height=#1]{assets/img/#2}}
 		\caption{#3}
-		\label{img:#2}
+		\label{img-#2}
 	\end{figure}
 }
 \newcommand{\boximg}[3] {
 	\begin{figure}[!ht]
 		\center{\fbox{\includegraphics[height=#1]{assets/img/#2}}}
 		\caption{#3}
-		\label{img:#2}
+		\label{img-#2}
 	\end{figure}
 }
 \newcommand{\mycomment}[1]{}
@@ -107,3 +115,7 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{svg-extract}
+
+\usepackage{caption}
+\usepackage{threeparttable}
+\usepackage{booktabs}

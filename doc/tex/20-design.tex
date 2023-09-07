@@ -15,7 +15,7 @@
 К программе предъявляются следующие требования:
 \begin{itemize}
 	\item время отклика программы должно быть менее 50 мс \cite{hzd};
-	\item программа должна корректно реагировать на любые действия пользователя;
+	\item программа должна корректно реагировать на любые действия пользователя.
 \end{itemize}
 
 \section{Разработка алгоритмов}
@@ -78,21 +78,31 @@
 Первая (основная) текстура отвечает за низкочастотный шум, имеет размер $ 128 \times 128 \times 128 $. Вторая (вспомогательная) текстура отвечает за высокочастотный шум, имеет размер $ 32 \times 32 \times 32 $. 
 В таблице \ref{tab:textures} показаны какие шумы используются для формирования текстур.
 
-\begin{table}[b]
-	\begin{center}
-\begin{tabular}{|c|c|c|c|c|}
-	\hline
-	Текстура & \multicolumn{4}{c|}{Шумы} \\
-	\hline
-	Основная & П-В (НЧ) & В (НЧ) & В (СЧ) & В (ВЧ)\\
-	\hline
-	Вспомогательная & В (НЧ) & В (СЧ) & В (ВЧ) & -\\
-	\hline
-\end{tabular}
-\end{center}
-\caption{Таблица шумов, из которых состоят текстуры. П-В - шум Перлина-Ворлея, В - шум Ворлея, НЧ - низкая частота, СЧ - средняя частота, ВЧ - высокая частота}
+
+\begin{table}[h]
+	\centering
+	\begin{threeparttable}
+		\captionsetup{justification=raggedleft,singlelinecheck=false}
+		\caption{Таблица шумов.}      
+		\begin{tabular}{|c|c|c|c|c|}
+			\hline
+			Текстура & \multicolumn{4}{c|}{Шумы} \\
+			\hline
+			Основная & П-В (НЧ) & В (НЧ) & В (СЧ) & В (ВЧ)\\
+			\hline
+			Вспомогательная & В (НЧ) & В (СЧ) & В (ВЧ) & -\\
+			\hline
+		\end{tabular}
+		\begin{tablenotes}
+			\small
+			\item Примечание: П-В -- шум Перлина-Ворлея, В -- шум Ворлея, НЧ -- низкая частота, СЧ -- средняя частота, ВЧ -- высокая частота.
+		\end{tablenotes}
+	\end{threeparttable} 
+	 
 \label{tab:textures}
 \end{table}
+
+
 
 В итоге, чтобы рассчитать плотность в некоторой точке, необходимо получить срезы шумов из текстуры и составить из них fBM (англ. fractal Brownian motion). FBM представляет собой сумму ряда октав шума, каждая из которых имеет более высокую частоту и более низкую амплитуду.
 
@@ -106,13 +116,20 @@
 
 \subsection{Общий алгоритм построения изображения}
 
-Общий алгоритм построения изображения показан на рисунке \ref{fig:renderscheme}.
+Общий алгоритм построения изображения показан на рисунке \ref{fig:renderschememain}.
 
 \begin{figure}
 	\centering
-	\includegraphics[width=1\textwidth]{assets/img/renderscheme2.pdf} % замените на имя вашего файла
+	\includegraphics[width=0.8\textwidth]{assets/img/rs1.pdf} % замените на имя вашего файла
 	\caption{Схема визуализации облаков с помощью алгоритма Ray Marching}
-	\label{fig:renderscheme}
+	\label{fig:renderschememain}
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.6\textwidth]{assets/img/rs2.pdf} % замените на имя вашего файла
+	\caption{Схема расчета цвета пикселя}
+	\label{fig:renderscheme2}
 \end{figure}
 
 \newpage
