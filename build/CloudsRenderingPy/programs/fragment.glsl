@@ -94,7 +94,7 @@ float cloudGetHeight(vec3 position, vec2 cloudMinMax){
 
 float cloudSampleDensity(vec3 position, vec2 cloudMinMax)
 {
-	position.xz+=vec2(0.2)*u_time; 
+	position.xz+=vec2(0.5)*u_time; 
 	float base = texture(u_lfNoise, position / 48).r;
 	float height = cloudGetHeight(position, cloudMinMax);
 	
