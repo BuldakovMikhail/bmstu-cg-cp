@@ -10,3 +10,6 @@ doc/tex/*.pdf
 *.zip
 *.toc
 CloudsRendering
+*.xml
+*.iml
+clion-*

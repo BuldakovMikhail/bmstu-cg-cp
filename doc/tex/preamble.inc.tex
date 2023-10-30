@@ -119,3 +119,11 @@
 \usepackage{caption}
 \usepackage{threeparttable}
 \usepackage{booktabs}
+
+\usepackage{array}
+\newenvironment{signstabular}[1][1]{
+	\renewcommand*{\arraystretch}{#1}
+	\tabular
+}{
+	\endtabular
+}
