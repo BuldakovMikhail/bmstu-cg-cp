@@ -14,8 +14,6 @@ float saturate(float height){
     float v = 2 * 2 * 2 / (height * height  + 2 * 2);
     v *= 100;
     return clamp(v, 0, 1);
-  
-  // return 1;
 }
 
 const float AMBIENT_STRENGTH = 0.1;
@@ -23,20 +21,18 @@ const float CLOUD_LIGHT_MULTIPLIER = 50.0;
 const vec3 EXTINCTION_MULT = vec3(0.8, 0.8, 1.0);
 const float DUAL_LOBE_WEIGHT = 0.7;
 
-	uniform float u_density;
-	uniform float u_coverage;
-	uniform float u_phaseInfluence;
-	uniform float u_eccentrisy;
+uniform float u_density;
+uniform float u_coverage;
+uniform float u_phaseInfluence;
+uniform float u_eccentrisy;
 
-	uniform float u_phaseInfluence2;
-	uniform float u_eccentrisy2;
-	uniform float u_attenuation;
-	uniform float u_attenuation2;
-	uniform float u_sunIntensity;
-	uniform float u_fog;
-	uniform float u_ambient;
-
-
+uniform float u_phaseInfluence2;
+uniform float u_eccentrisy2;
+uniform float u_attenuation;
+uniform float u_attenuation2;
+uniform float u_sunIntensity;
+uniform float u_fog;
+uniform float u_ambient;
 
 uniform vec2 u_resolution;
 uniform float u_time;
@@ -48,7 +44,6 @@ uniform sampler2D u_weatherMap;
 uniform sampler3D u_lfNoise;
 uniform sampler3D u_hfNoise;
 
-
 const vec3 camPos = vec3(0, 6400, 0);
 const float maxCloud = 6435;
 const float minCloud = 6415;
@@ -59,10 +54,6 @@ const float iSteps = 32;
 const float jSteps = 6;
 
 const float FOV = 1; 
-
-// float saturate(float x) {
-//   return clamp(x, 0.0, 1.0);
-// }
 
 float remap(float value, float minValue, float maxValue, float newMinValue, float newMaxValue)
 {
@@ -106,7 +97,6 @@ float cloudSampleDensity(vec3 position, vec2 cloudMinMax)
   base *= coff;
 
   float baseCloudWithCoverage = remap(base, 1-coverage, 1, 0, 1);
-  // float baseCloudWithCoverage = base;
   baseCloudWithCoverage *= coverage;
 
   float hfFBM = texture(u_hfNoise, position / 48).r;
@@ -221,7 +211,7 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
 
         // Calculate attenuation.
         vec3 attnMie = exp(-kMie * (iOdMie + jOdMie));
-		vec3 attnRlh = exp(-kRlh * (iOdRlh + jOdRlh));
+    		vec3 attnRlh = exp(-kRlh * (iOdRlh + jOdRlh));
 
         // Accumulate scattering.
         totalRlh += odStepRlh * attnRlh;
@@ -235,7 +225,6 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
     // Calculate and return the final color.
 
     return iSun * (pRlh * kRlh * totalRlh + pMie * kMie * totalMie);
-    //return iSun * (pMie * kMie * totalMie);
 }
 
 float DualHenyeyGreenstein(float g, float costh) {
@@ -304,8 +293,6 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
   0.996
   );
 
-  // if (position.y > position2.y)
-  //   return vec4(atmoColor, 1);
 
 	float avrStep = (maxCloud - minCloud) / 64;
 
@@ -313,17 +300,13 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
 	cloudMinMax.x = position.z;
 	cloudMinMax.y = position2.z;
 
-	// crossRaySphereOutFar(vec3(0.0, 6400.0, 0.0), viewDir, vec3(0.0), 6415.0, position);
-	
 	vec3 iPos = position;
 
 	float density = 0;
-	// float bl = 1;
 
 	float mu = dot(viewDir, sunDir);
 
 	float l = 0;
-	// vec3 color = vec3(0);
 
 	vec3 transmittance = vec3(1);
 	vec3 scattering = vec3(0);
@@ -340,50 +323,35 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
 
     if (density > 0.01){
       vec3 luminance = ambient + sunLight * calculateLightEnergy(iPos, sunDir, mu, cloudMinMax);
-		vec3 ttransmittance = exp(-density * avrStep * EXTINCTION_MULT * u_attenuation);
-		vec3 integScatt = density * (luminance - luminance * ttransmittance) / density;
+		  vec3 ttransmittance = exp(-density * avrStep * EXTINCTION_MULT * u_attenuation);
+		  vec3 integScatt = density * (luminance - luminance * ttransmittance) / density;
 
-		scattering += transmittance * integScatt;
-		transmittance *= ttransmittance;  
+		  scattering += transmittance * integScatt;
+		  transmittance *= ttransmittance;  
       if (length(transmittance) <= 0.01) {
               transmittance = vec3(0.0);
               break;
       }
     }
 
-
 		iPos += viewDir * avrStep;
 	}
-
-
-
-	
 	transmittance = saturate3(transmittance);
 	
-	
-	
-	vec3 color = atmoColor.xyz * transmittance + scattering;
+  vec3 color = atmoColor.xyz * transmittance + scattering;
 
 	return vec4(color, 1);
-
-	// float bl = exp(-0.1 * density);
-	// return vec4(vec3(density / (density + 1)), 1);
-	// return vec4(vec3(l / (l + 1)), 1);
-	//return vec4(mix(color, atmoColor, transmittance), 1);
-	// return vec4(vec3(transmittance / (transmittance + 1)), 1);
 }	
 
 void main()
 {
-	vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
+	  vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
 
-	vec3 ro = camPos;
+	  vec3 ro = camPos;
     vec3 lookAt = ro + u_look_at;
-	vec3 rd = getCam(ro, lookAt) * normalize(vec3(uv, FOV));
+	  vec3 rd = getCam(ro, lookAt) * normalize(vec3(uv, FOV));
 
     vec4 col = mainMarching(ro, rd, normalize(u_sun_pos), vec3(1, 1, 1), vec3(0.3, 0.79, 1));
-
-    // col *= vec3(2, 1.8, 2); // color correction
 
     // gamma correction
     vec3 tunedColor=col.rgb/(1+col.rgb);
