@@ -17,9 +17,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         timer.timeout.connect(self.openGLWidget.updateGL)
         timer.start()
 
-        self.pushButton.clicked.connect(self.update_dens)
+        self.pushButton.clicked.connect(self.update_scene)
 
-    def update_dens(self):
-        val = self.doubleSpinBox.value()
+    def update_scene(self):
+        sun_pos = self.x_sun.value(), self.y_sun.value(), self.z_sun.value()
+        look = (
+            self.x_look.value(),
+            self.y_look.value(),
+            self.z_look.value(),
+        )
 
-        self.openGLWidget.scene.safe_uniform("u_attenuation", val)
+        self.openGLWidget.scene.safe_uniform("u_sun_pos", sun_pos)
+        self.openGLWidget.scene.safe_uniform("u_look_at", look)

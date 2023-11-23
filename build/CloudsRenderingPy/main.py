@@ -5,6 +5,7 @@ from framework import MainWindow
 from PyQt5 import QtCore
 from myglwidget import MyWidget
 
+# from myglwidget import MyWidget
 
 def main():
     app = QApplication(sys.argv)  # Новый экземпляр QApplication

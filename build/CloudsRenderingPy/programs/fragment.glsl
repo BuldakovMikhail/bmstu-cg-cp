@@ -42,6 +42,8 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform vec3 u_sun_pos;
 
+uniform vec3 u_look_at;
+
 uniform sampler2D u_weatherMap;
 uniform sampler3D u_lfNoise;
 uniform sampler3D u_hfNoise;
@@ -376,7 +378,7 @@ void main()
 	vec2 uv = (2.0 * gl_FragCoord.xy - u_resolution.xy) / u_resolution.y;
 
 	vec3 ro = camPos;
-    vec3 lookAt = ro + vec3(0,0.5,1);
+    vec3 lookAt = ro + u_look_at;
 	vec3 rd = getCam(ro, lookAt) * normalize(vec3(uv, FOV));
 
     vec4 col = mainMarching(ro, rd, normalize(u_sun_pos), vec3(1, 1, 1), vec3(0.3, 0.79, 1));
