@@ -88,24 +88,43 @@ float cloudGetHeight(vec3 position, vec2 cloudMinMax){
 float cloudSampleDensity(vec3 position, vec2 cloudMinMax)
 {
 	position.xz+=vec2(0.5)*u_time; 
-	float base = texture(u_lfNoise, position / 48).r;
-	float height = cloudGetHeight(position, cloudMinMax);
+
+  vec4 weather=texture(u_weatherMap, position.xz/480+vec2(0.2, 0.1));
+	float height=cloudGetHeight(position, cloudMinMax);
 	
-  float coverage = texture(u_weatherMap, position.xz / 480).r;
-  float coff = saturate(height);
+	float SRb=clamp(remap(height, 0, 0.07, 0, 1), 0, 1);
+	float SRt=clamp(remap(height, weather.b*0.2, weather.b, 1, 0), 0, 1);
+	float SA=SRb*SRt;
+	
+	float DRb=height*clamp(remap(height, 0, 0.15, 0, 1), 0, 1);
+	float DRt=height*clamp(remap(height, 0.9, 1, 1, 0), 0, 1);
+	float DA=DRb*DRt*weather.a*2*u_density;
+	
+	float SNsample=texture(u_lfNoise, position/48.0f).x*0.85f+texture(u_hfNoise, position/48).x*0.15f; 
+	
+	float WMc=max(weather.r, clamp(u_coverage-0.5, 0, 1)*weather.g*2);
+	float d=clamp(remap(SNsample*SA, 1-u_coverage*WMc, 1, 0, 1), 0, 1)*DA;
+	
+	return d;
 
-  base *= coff;
+	// float base = texture(u_lfNoise, position / 48).r;
+	// float height = cloudGetHeight(position, cloudMinMax);
+	
+  // float coverage = texture(u_weatherMap, position.xz / 480).r;
+  // float coff = saturate(height);
 
-  float baseCloudWithCoverage = remap(base, 1-coverage, 1, 0, 1);
-  baseCloudWithCoverage *= coverage;
+  // base *= coff;
 
-  float hfFBM = texture(u_hfNoise, position / 48).r;
-  float hfNoiseModifier = mix(hfFBM, 1 - hfFBM, clamp(height * 10, 0, 1));
+  // float baseCloudWithCoverage = remap(base, 1-coverage, 1, 0, 1);
+  // baseCloudWithCoverage *= coverage;
 
-  float finalCloud = remap(baseCloudWithCoverage, hfNoiseModifier * 0.2, 1, 0, 1);
+  // float hfFBM = texture(u_hfNoise, position / 48).r;
+  // float hfNoiseModifier = mix(hfFBM, 1 - hfFBM, clamp(height * 10, 0, 1));
+
+  // float finalCloud = remap(baseCloudWithCoverage, hfNoiseModifier * 0.2, 1, 0, 1);
 
 
-	return max(finalCloud, 0);
+	// return max(finalCloud, 0);
 }
 
 
@@ -242,7 +261,7 @@ vec3 MultipleOctaveScattering(float density, float mu) {
 
   float a = 1.0;
   float b = 1.0;
-  float c = 1.0;
+  float c = u_eccentrisy;
   float g = 0.85;
   const float scatteringOctaves = 4.0;
   

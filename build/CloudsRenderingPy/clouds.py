@@ -39,7 +39,7 @@ def get_lf_noise():
 
 def get_hf_noise():
     dens = 32
-    mul = [4, 8, 16, 32]
+    mul = [2, 4, 8, 16]
     # shape = np.array([128, 128])
     stacks = []
 
@@ -108,7 +108,7 @@ class Clouds:
         texture3 = self.ctx.texture3d((32, 32, 32), 1, hf_noise, dtype="f4")
         texture3.use(2)
 
-        image = Image.open("textures/weatherMap3.png")
+        image = Image.open("textures/weatherMap.png")
         img_data = np.array(list(image.getdata()), np.uint8)
         texture = self.ctx.texture(image.size, 4, img_data)
         self.safe_uniform("u_weatherMap", 0)

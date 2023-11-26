@@ -27,5 +27,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.z_look.value(),
         )
 
+        density = self.densitySB.value()
+        coverage = self.coverageSB.value()
+        eccentrisy = self.eccentrisySB.value()
+
         self.openGLWidget.scene.safe_uniform("u_sun_pos", sun_pos)
         self.openGLWidget.scene.safe_uniform("u_look_at", look)
+
+        self.openGLWidget.scene.safe_uniform("u_density", density)
+        self.openGLWidget.scene.safe_uniform("u_coverage", coverage)
+        self.openGLWidget.scene.safe_uniform("u_eccentrisy", eccentrisy)
