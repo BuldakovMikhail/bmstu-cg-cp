@@ -110,6 +110,7 @@ class Ui_MainWindow(object):
         self.x_look.setObjectName("x_look")
         self.gridLayout_2.addWidget(self.x_look, 1, 0, 1, 1)
         self.y_look = QtWidgets.QDoubleSpinBox(self.groupBox_3)
+        self.y_look.setMinimum(-1.0)
         self.y_look.setMaximum(1.0)
         self.y_look.setSingleStep(0.1)
         self.y_look.setProperty("value", 0.5)
