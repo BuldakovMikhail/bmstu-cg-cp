@@ -331,7 +331,7 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
 	vec3 scattering = vec3(0);
 
 	vec3 sunLightColor = vec3(1.0);
-    vec3 sunLight = sunLightColor * CLOUD_LIGHT_MULTIPLIER;
+  vec3 sunLight = sunLightColor * CLOUD_LIGHT_MULTIPLIER;
 	vec3 ambient = vec3(AMBIENT_STRENGTH * sunLightColor) * u_ambient;
 
 	for (int i = 0; i < 128; ++i){
@@ -343,7 +343,7 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
     if (density > 0.01){
       vec3 luminance = ambient + sunLight * calculateLightEnergy(iPos, sunDir, mu, cloudMinMax);
 		  vec3 ttransmittance = exp(-density * avrStep * EXTINCTION_MULT * u_attenuation);
-		  vec3 integScatt = density * (luminance - luminance * ttransmittance) / density;
+		  vec3 integScatt = (luminance - luminance * ttransmittance);
 
 		  scattering += transmittance * integScatt;
 		  transmittance *= ttransmittance;  

@@ -17,44 +17,59 @@ def remap(originalValue, originalMin, originalMax, newMin, newMax):
 
 
 def get_lf_noise():
-    dens = 32
-    stacks = []
-    mul = [2, 4, 16, 32]
+    try:
+        res = np.fromfile("lf_noise.bin", dtype=np.float32).reshape(128, 128, 128)
+    except FileNotFoundError:
+        dens = 32
+        stacks = []
+        mul = [2, 4, 16, 32]
 
-    for i in mul:
-        shape = (4 * i, 4 * i, 4 * i)
-        w, c = worley(shape, dens=dens // i, seed=0)
-        w = w[0].T
-        stacks.append(w)
-    worleyFBM0 = stacks[0] * 0.625 + stacks[1] * 0.25 + stacks[2] * 0.125
-    worleyFBM1 = stacks[1] * 0.625 + stacks[2] * 0.25 + stacks[3] * 0.125
-    worleyFBM2 = stacks[2] * 0.75 + stacks[3] * 0.25
+        for i in mul:
+            shape = (4 * i, 4 * i, 4 * i)
+            w, c = worley(shape, dens=dens // i, seed=0)
+            w = w[0].T
+            stacks.append(w)
+        worleyFBM0 = stacks[0] * 0.625 + stacks[1] * 0.25 + stacks[2] * 0.125
+        worleyFBM1 = stacks[1] * 0.625 + stacks[2] * 0.25 + stacks[3] * 0.125
+        worleyFBM2 = stacks[2] * 0.75 + stacks[3] * 0.25
 
-    noise = perlin((4, 4, 4), dens=32, seed=0)
-    perlinWorley = remap(noise * 1.9, worleyFBM0, 1.0, 0.0, 1.0)
+        noise = perlin((4, 4, 4), dens=32, seed=0)
+        perlinWorley = remap(noise * 1.9, worleyFBM0, 1.0, 0.0, 1.0)
 
-    fbm = worleyFBM0 * 0.625 + worleyFBM1 * 0.25 + worleyFBM2 * 0.125
-    return remap(perlinWorley, -(1 - fbm), 1, 0, 1).astype(np.float32)
+        fbm = worleyFBM0 * 0.625 + worleyFBM1 * 0.25 + worleyFBM2 * 0.125
+        res = remap(perlinWorley, -(1 - fbm), 1, 0, 1).astype(np.float32)
+        res = np.asarray(res, dtype=np.float32, order="C")
+
+        res.tofile("lf_noise.bin")
+
+    return res
 
 
 def get_hf_noise():
-    dens = 32
-    mul = [2, 4, 8, 16]
-    # shape = np.array([128, 128])
-    stacks = []
+    try:
+        res = np.fromfile("hf_noise.bin", dtype=np.float32).reshape(32, 32, 32)
+    except FileNotFoundError:
+        dens = 32
+        mul = [2, 4, 8, 16]
+        # shape = np.array([128, 128])
+        stacks = []
 
-    for i in mul:
-        shape = (i, i, i)
-        w, c = worley(shape, dens=dens // i, seed=0)
-        w = w[0].T
-        stacks.append(w)
+        for i in mul:
+            shape = (i, i, i)
+            w, c = worley(shape, dens=dens // i, seed=0)
+            w = w[0].T
+            stacks.append(w)
 
-    worleyFBM0 = stacks[0] * 0.625 + stacks[1] * 0.25 + stacks[2] * 0.125
-    worleyFBM1 = stacks[1] * 0.625 + stacks[2] * 0.25 + stacks[3] * 0.125
-    worleyFBM2 = stacks[2] * 0.75 + stacks[3] * 0.25
-    fbm = worleyFBM0 * 0.625 + worleyFBM1 * 0.25 + worleyFBM2 * 0.125
+        worleyFBM0 = stacks[0] * 0.625 + stacks[1] * 0.25 + stacks[2] * 0.125
+        worleyFBM1 = stacks[1] * 0.625 + stacks[2] * 0.25 + stacks[3] * 0.125
+        worleyFBM2 = stacks[2] * 0.75 + stacks[3] * 0.25
+        fbm = worleyFBM0 * 0.625 + worleyFBM1 * 0.25 + worleyFBM2 * 0.125
 
-    return np.asarray(fbm, dtype=np.float32, order="C")
+        res = np.asarray(fbm, dtype=np.float32, order="C")
+
+        res.tofile("hf_noise.bin")
+
+    return res
 
 
 class Clouds:
