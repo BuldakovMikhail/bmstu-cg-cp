@@ -4,14 +4,6 @@
 
 layout (location = 0) out vec4 fragColor;
 
-float saturate(float height){
-	height -= 0.4;
-    height *= 100;
-    float v = 2 * 2 * 2 / (height * height  + 2 * 2);
-    v *= 100;
-    return clamp(v, 0, 1);
-}
-
 const float AMBIENT_STRENGTH = 0.1;
 const float CLOUD_LIGHT_MULTIPLIER = 50.0;
 const vec3 EXTINCTION_MULT = vec3(0.8, 0.8, 1.0);
@@ -104,8 +96,6 @@ float cloudSampleDensity(vec3 position)
 	return d;
 }
 
-
-
 float HenyeyGreenstein(float g, float mu) {
   float gg = g * g;
 	return (1.0 / (4.0 * PI))  * ((1.0 - gg) / pow(1.0 + gg - 2.0 * g * mu, 1.5));
@@ -113,19 +103,15 @@ float HenyeyGreenstein(float g, float mu) {
 
 float cloudSampleDirectDensity(vec3 position, vec3 sunDir)
 {
-	//определяем размер шага
 	float avrStep=(6435.0-6415.0)*0.01;
 	float sumDensity=0.0;
 	for(int i=0;i<4;i++)
 	{
 		float step=avrStep;
-		//для последней выборки умножаем шаг на 6
-		// if(i==3)
-		// 	step=step*6.0;
-		//обновляем позицию
+		if(i==3)
+			step=step*6.0;
+
 		position+=sunDir*step;
-		//получаем значение плотности, вызывая функцию, которая уже 
-                //рассматривалась ранее
 		float density=cloudSampleDensity(position)*step;
 		sumDensity+=density;
 	}
@@ -133,93 +119,65 @@ float cloudSampleDirectDensity(vec3 position, vec3 sunDir)
 }
 
 vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAtmos, vec3 kRlh, vec3 kMie, float shRlh, float shMie, float g) {
-    // Normalize the sun and view directions.
     pSun = normalize(pSun);
     r = normalize(r);
 
-    // Calculate the step size of the primary ray.
     vec2 p = rsi(r0, r, rAtmos);
     if (p.x > p.y) return vec3(0,0,0);
     p.y = min(p.y, rsi(r0, r, rPlanet).x);
     float iStepSize = (p.y - p.x) / float(iSteps);
 
-    // Initialize the primary ray time.
     float iTime = 0.0;
 
-    // Initialize accumulators for Rayleigh and Mie scattering.
     vec3 totalRlh = vec3(0,0,0);
     vec3 totalMie = vec3(0,0,0);
 
-    // Initialize optical depth accumulators for the primary ray.
     float iOdRlh = 0.0;
     float iOdMie = 0.0;
 
-    // Calculate the Rayleigh and Mie phases.
     float mu = dot(r, pSun);
     float mumu = mu * mu;
     float gg = g * g;
     float pRlh = 3.0 * PI / (16.0) * (1.0 + mumu);
     float pMie = 3.0 * PI / (8.0) * ((1.0 - gg) * (mumu + 1.0)) / (pow(1.0 + gg - 2.0 * mu * g, 1.5) * (2.0 + gg));
 
-    // Sample the primary ray.
     for (int i = 0; i < iSteps; i++) {
-
-        // Calculate the primary ray sample position.
         vec3 iPos = r0 + r * (iTime + iStepSize * 0.5);
 
-        // Calculate the height of the sample.
         float iHeight = length(iPos) - rPlanet;
 
-        // Calculate the optical depth of the Rayleigh and Mie scattering for this step.
         float odStepRlh = exp(-iHeight / shRlh) * iStepSize;
         float odStepMie = exp(-iHeight / shMie) * iStepSize;
 
-        // Accumulate optical depth.
         iOdRlh += odStepRlh;
         iOdMie += odStepMie;
 
-        // Calculate the step size of the secondary ray.
         float jStepSize = rsi(iPos, pSun, rAtmos).y / float(jSteps);
 
-        // Initialize the secondary ray time.
         float jTime = 0.0;
 
-        // Initialize optical depth accumulators for the secondary ray.
         float jOdRlh = 0.0;
         float jOdMie = 0.0;
 
-        // Sample the secondary ray.
         for (int j = 0; j < jSteps; j++) {
-
-            // Calculate the secondary ray sample position.
             vec3 jPos = iPos + pSun * (jTime + jStepSize * 0.5);
 
-            // Calculate the height of the sample.
             float jHeight = length(jPos) - rPlanet;
 
-            // Accumulate the optical depth.
             jOdRlh += exp(-jHeight / shRlh) * jStepSize;
             jOdMie += exp(-jHeight / shMie) * jStepSize;
 
-            // Increment the secondary ray time.
             jTime += jStepSize;
         }
 
-        // Calculate attenuation.
         vec3 attnMie = exp(-kMie * (iOdMie + jOdMie));
     		vec3 attnRlh = exp(-kRlh * (iOdRlh + jOdRlh));
 
-        // Accumulate scattering.
         totalRlh += odStepRlh * attnRlh;
         totalMie += odStepMie * attnMie;
 
-        // Increment the primary ray time.
         iTime += iStepSize;
-
     }
-
-    // Calculate and return the final color.
-
     return iSun * (pRlh * kRlh * totalRlh + pMie * kMie * totalMie);
 }
 
@@ -258,13 +216,15 @@ vec3 MultipleOctaveScattering(float density, float mu) {
 }
 
 
+
+
 vec3 calculateLightEnergy(vec3 position, vec3 sunDir, float mu) {
   
   float density = cloudSampleDirectDensity(position, sunDir)* u_attenuation2;
   vec3 beersLaw = MultipleOctaveScattering(density, mu);
   vec3 powder = 1.0 - exp(-density * 2.0 * EXTINCTION_MULT);
 
-return beersLaw * mix(2.0 * powder, vec3(1.0), remap(mu, -1.0, 1.0, 0.0, 1.0));
+  return beersLaw * mix(2.0 * powder, vec3(1.0), remap(mu, -1.0, 1.0, 0.0, 1.0));
 }
 
 vec3 getAtmoColor(vec3 viewDir){
