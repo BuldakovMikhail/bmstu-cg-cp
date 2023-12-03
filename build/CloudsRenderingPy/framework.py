@@ -3,6 +3,7 @@ from PyQt5 import QtTest
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from gui import Ui_MainWindow
+from PyQt5.QtWidgets import QMessageBox
 
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -21,10 +22,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def update_scene(self):
         sun_pos = self.x_sun.value(), self.y_sun.value(), self.z_sun.value()
+
+        if sun_pos[0] == 0 and sun_pos[1] == 0 and sun_pos[2] == 0:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("Ошибка")
+            msg.setInformativeText(
+                "Направление вектора падения света задано неправильно, установлено значение по умолчанию"
+            )
+            msg.setWindowTitle("Ошибка")
+            msg.exec_()
+
+            sun_pos = (0, 0.5, 1)
+
         look = (
             self.x_look.value(),
             self.y_look.value(),
-            self.z_look.value(),
+            self.z_look.value() + 0.0001,
         )
 
         density = self.densitySB.value()

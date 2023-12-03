@@ -4,10 +4,6 @@
 
 layout (location = 0) out vec4 fragColor;
 
-vec3 saturate3(vec3 x) {
-  return clamp(x, vec3(0.0), vec3(1.0));
-}
-
 float saturate(float height){
 	height -= 0.4;
     height *= 100;
@@ -81,16 +77,16 @@ mat3 getCam(vec3 ro, vec3 lookAt) {
     return mat3(camR, camU, camF);
 }
 
-float cloudGetHeight(vec3 position, vec2 cloudMinMax){
+float cloudGetHeight(vec3 position){
 	return (position.y - minCloud) / (maxCloud - minCloud);
 }
 
-float cloudSampleDensity(vec3 position, vec2 cloudMinMax)
+float cloudSampleDensity(vec3 position)
 {
 	position.xz+=vec2(0.5)*u_time; 
 
   vec4 weather=texture(u_weatherMap, position.xz/480+vec2(0.2, 0.1));
-	float height=cloudGetHeight(position, cloudMinMax);
+	float height=cloudGetHeight(position);
 	
 	float SRb=clamp(remap(height, 0, 0.07, 0, 1), 0, 1);
 	float SRt=clamp(remap(height, weather.b*0.2, weather.b, 1, 0), 0, 1);
@@ -106,25 +102,6 @@ float cloudSampleDensity(vec3 position, vec2 cloudMinMax)
 	float d=clamp(remap(SNsample*SA, 1-u_coverage*WMc, 1, 0, 1), 0, 1)*DA;
 	
 	return d;
-
-	// float base = texture(u_lfNoise, position / 48).r;
-	// float height = cloudGetHeight(position, cloudMinMax);
-	
-  // float coverage = texture(u_weatherMap, position.xz / 480).r;
-  // float coff = saturate(height);
-
-  // base *= coff;
-
-  // float baseCloudWithCoverage = remap(base, 1-coverage, 1, 0, 1);
-  // baseCloudWithCoverage *= coverage;
-
-  // float hfFBM = texture(u_hfNoise, position / 48).r;
-  // float hfNoiseModifier = mix(hfFBM, 1 - hfFBM, clamp(height * 10, 0, 1));
-
-  // float finalCloud = remap(baseCloudWithCoverage, hfNoiseModifier * 0.2, 1, 0, 1);
-
-
-	// return max(finalCloud, 0);
 }
 
 
@@ -134,7 +111,7 @@ float HenyeyGreenstein(float g, float mu) {
 	return (1.0 / (4.0 * PI))  * ((1.0 - gg) / pow(1.0 + gg - 2.0 * g * mu, 1.5));
 }
 
-float cloudSampleDirectDensity(vec3 position, vec3 sunDir, vec2 cloudMinMax)
+float cloudSampleDirectDensity(vec3 position, vec3 sunDir)
 {
 	//определяем размер шага
 	float avrStep=(6435.0-6415.0)*0.01;
@@ -149,7 +126,7 @@ float cloudSampleDirectDensity(vec3 position, vec3 sunDir, vec2 cloudMinMax)
 		position+=sunDir*step;
 		//получаем значение плотности, вызывая функцию, которая уже 
                 //рассматривалась ранее
-		float density=cloudSampleDensity(position, cloudMinMax)*step;
+		float density=cloudSampleDensity(position)*step;
 		sumDensity+=density;
 	}
 	return sumDensity;
@@ -281,24 +258,17 @@ vec3 MultipleOctaveScattering(float density, float mu) {
 }
 
 
-vec3 calculateLightEnergy(vec3 position, vec3 sunDir, float mu, vec2 cloudMinMax) {
+vec3 calculateLightEnergy(vec3 position, vec3 sunDir, float mu) {
   
-  float density = cloudSampleDirectDensity(position, sunDir, cloudMinMax)* u_attenuation2;
+  float density = cloudSampleDirectDensity(position, sunDir)* u_attenuation2;
   vec3 beersLaw = MultipleOctaveScattering(density, mu);
   vec3 powder = 1.0 - exp(-density * 2.0 * EXTINCTION_MULT);
 
 return beersLaw * mix(2.0 * powder, vec3(1.0), remap(mu, -1.0, 1.0, 0.0, 1.0));
 }
 
-vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambientColor)
-{
-	vec2 t = rsi(ro, viewDir, minCloud);
-	vec3 position = ro + viewDir * t.y;
-
-	vec2 t2 = rsi(ro, viewDir, maxCloud);
-	vec3 position2 = ro + viewDir * t2.y;
-
-  vec3 atmoColor = atmosphere(
+vec3 getAtmoColor(vec3 viewDir){
+    vec3 col = atmosphere(
   viewDir,
   vec3(0, 6371000, 0),
   normalize(u_sun_pos),
@@ -311,21 +281,25 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
   1.2e3,
   0.996
   );
+    
+    return col;
+}
 
+
+vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambientColor)
+{
+	vec2 t = rsi(ro, viewDir, minCloud);
+	vec3 position = ro + viewDir * t.y;
+
+  vec3 atmoColor = getAtmoColor(viewDir);
 
 	float avrStep = (maxCloud - minCloud) / 64;
-
-	vec2 cloudMinMax;
-	cloudMinMax.x = position.z;
-	cloudMinMax.y = position2.z;
 
 	vec3 iPos = position;
 
 	float density = 0;
 
 	float mu = dot(viewDir, sunDir);
-
-	float l = 0;
 
 	vec3 transmittance = vec3(1);
 	vec3 scattering = vec3(0);
@@ -335,15 +309,14 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
 	vec3 ambient = vec3(AMBIENT_STRENGTH * sunLightColor) * u_ambient;
 
 	for (int i = 0; i < 128; ++i){
-		
-		if (length(iPos) > maxCloud)
+    if (length(iPos) > maxCloud)
 			break;
-		density = cloudSampleDensity(iPos, cloudMinMax);
 
+		density = cloudSampleDensity(iPos);
     if (density > 0.01){
-      vec3 luminance = ambient + sunLight * calculateLightEnergy(iPos, sunDir, mu, cloudMinMax);
+      vec3 luminance = ambient + sunLight * calculateLightEnergy(iPos, sunDir, mu);
 		  vec3 ttransmittance = exp(-density * avrStep * EXTINCTION_MULT * u_attenuation);
-		  vec3 integScatt = (luminance - luminance * ttransmittance);
+		  vec3 integScatt = luminance * (1 - ttransmittance);
 
 		  scattering += transmittance * integScatt;
 		  transmittance *= ttransmittance;  
@@ -355,7 +328,6 @@ vec4 mainMarching(vec3 ro, vec3 viewDir, vec3 sunDir, vec3 sunColor, vec3 ambien
 
 		iPos += viewDir * avrStep;
 	}
-	transmittance = saturate3(transmittance);
 	
   vec3 color = atmoColor.xyz * transmittance + scattering;
 
@@ -372,7 +344,6 @@ void main()
 
     vec4 col = mainMarching(ro, rd, normalize(u_sun_pos), vec3(1, 1, 1), vec3(0.3, 0.79, 1));
 
-    // gamma correction
     vec3 tunedColor=col.rgb/(1+col.rgb);
     tunedColor = pow(tunedColor, vec3(1.0/2.2));
     fragColor = vec4(tunedColor, col.a);

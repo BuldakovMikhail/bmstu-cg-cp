@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'gui.ui'
+# Form implementation generated from reading ui file '.\gui.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.7
 #
@@ -65,7 +65,7 @@ class Ui_MainWindow(object):
         self.gridLayout = QtWidgets.QGridLayout(self.groupBox_2)
         self.gridLayout.setObjectName("gridLayout")
         self.y_sun = QtWidgets.QDoubleSpinBox(self.groupBox_2)
-        self.y_sun.setMinimum(-1.0)
+        self.y_sun.setMinimum(0.0)
         self.y_sun.setMaximum(1.0)
         self.y_sun.setSingleStep(0.1)
         self.y_sun.setProperty("value", 0.5)
@@ -99,18 +99,20 @@ class Ui_MainWindow(object):
         self.gridLayout_2 = QtWidgets.QGridLayout(self.groupBox_3)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.z_look = QtWidgets.QDoubleSpinBox(self.groupBox_3)
+        self.z_look.setMinimum(-1.0)
         self.z_look.setMaximum(1.0)
         self.z_look.setSingleStep(0.1)
         self.z_look.setProperty("value", 1.0)
         self.z_look.setObjectName("z_look")
         self.gridLayout_2.addWidget(self.z_look, 1, 2, 1, 1)
         self.x_look = QtWidgets.QDoubleSpinBox(self.groupBox_3)
+        self.x_look.setMinimum(-1.0)
         self.x_look.setMaximum(1.0)
         self.x_look.setSingleStep(0.1)
         self.x_look.setObjectName("x_look")
         self.gridLayout_2.addWidget(self.x_look, 1, 0, 1, 1)
         self.y_look = QtWidgets.QDoubleSpinBox(self.groupBox_3)
-        self.y_look.setMinimum(-1.0)
+        self.y_look.setMinimum(0.0)
         self.y_look.setMaximum(1.0)
         self.y_look.setSingleStep(0.1)
         self.y_look.setProperty("value", 0.5)

@@ -102,7 +102,7 @@
          <item row="2" column="1">
           <widget class="QDoubleSpinBox" name="y_sun">
            <property name="minimum">
-            <double>-1.000000000000000</double>
+            <double>0.000000000000000</double>
            </property>
            <property name="maximum">
             <double>1.000000000000000</double>
@@ -176,6 +176,9 @@
         <layout class="QGridLayout" name="gridLayout_2">
          <item row="1" column="2">
           <widget class="QDoubleSpinBox" name="z_look">
+           <property name="minimum">
+            <double>-1.000000000000000</double>
+           </property>
            <property name="maximum">
             <double>1.000000000000000</double>
            </property>
@@ -189,6 +192,9 @@
          </item>
          <item row="1" column="0">
           <widget class="QDoubleSpinBox" name="x_look">
+           <property name="minimum">
+            <double>-1.000000000000000</double>
+           </property>
            <property name="maximum">
             <double>1.000000000000000</double>
            </property>
@@ -200,7 +206,7 @@
          <item row="1" column="1">
           <widget class="QDoubleSpinBox" name="y_look">
            <property name="minimum">
-            <double>-1.000000000000000</double>
+            <double>0.000000000000000</double>
            </property>
            <property name="maximum">
             <double>1.000000000000000</double>
