@@ -70,7 +70,7 @@
          <item>
           <widget class="QLabel" name="label_6">
            <property name="text">
-            <string>Эксесинтрет</string>
+            <string>Эксцентриситет</string>
            </property>
           </widget>
          </item>

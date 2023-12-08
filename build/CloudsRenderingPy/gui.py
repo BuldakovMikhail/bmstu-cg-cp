@@ -152,7 +152,7 @@ class Ui_MainWindow(object):
         self.groupBox.setTitle(_translate("MainWindow", "Параметры облаков"))
         self.label_4.setText(_translate("MainWindow", "Плотность"))
         self.label_5.setText(_translate("MainWindow", "Покрытие"))
-        self.label_6.setText(_translate("MainWindow", "Эксесинтрет"))
+        self.label_6.setText(_translate("MainWindow", "Эксцентриситет"))
         self.groupBox_2.setTitle(_translate("MainWindow", "Вектор направления лучей солнца"))
         self.label.setText(_translate("MainWindow", "Х"))
         self.label_2.setText(_translate("MainWindow", "Y"))
