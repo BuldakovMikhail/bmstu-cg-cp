@@ -50,7 +50,7 @@ class MyWidget(QModernGLWidget):
         self.scene.clear()
 
         self.scene.render(self.t, 1)
-        self.t += 0.5
+        self.t += 0.5 / 10
 
     # def mousePressEvent(self, evt):
     #     pan_tool.start_drag(evt.x() / 512, evt.y() / 512)

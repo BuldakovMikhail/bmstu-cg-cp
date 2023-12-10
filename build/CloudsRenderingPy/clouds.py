@@ -74,7 +74,7 @@ def get_hf_noise():
 
 class Clouds:
     resource_dir = "programs"
-    window_size = 900, 600
+    window_size = 1280, 720
 
     def __init__(self, ctx):
         self.ctx = ctx
@@ -99,11 +99,11 @@ class Clouds:
         # uniforms
         self.safe_uniform("u_resolution", self.window_size)
         self.theta = 0
-        self.safe_uniform("u_density", 150)
+        self.safe_uniform("u_density", 50)
         self.safe_uniform("u_coverage", 1.2)
 
         self.safe_uniform("u_phaseInfluence", 0.5)
-        self.safe_uniform("u_eccentrisy", 0.996)
+        self.safe_uniform("u_eccentrisy", 0.49)
         self.safe_uniform("u_phaseInfluence2", 0.5)
         self.safe_uniform("u_eccentrisy2", 0.49)
         self.safe_uniform("u_attenuation", 0.2)
