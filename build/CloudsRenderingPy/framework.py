@@ -38,8 +38,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         look = (
             self.x_look.value(),
             self.y_look.value(),
-            self.z_look.value() + 0.0001,
+            self.z_look.value(),
         )
+
+        if look[0] == 0 and look[1] == 0 and look[2] == 0:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("Ошибка")
+            msg.setInformativeText(
+                "Направление вектора взгляда задано неправильно, установлено значение по умолчанию"
+            )
+            msg.setWindowTitle("Ошибка")
+            msg.exec_()
+
+            look = (0, 0.5, 1)
+        else:
+            look = (look[0], look[1], look[2] + 0.0001)
 
         density = self.densitySB.value()
         coverage = self.coverageSB.value()
