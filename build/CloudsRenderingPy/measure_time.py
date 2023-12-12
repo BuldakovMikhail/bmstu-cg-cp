@@ -75,20 +75,21 @@ def get_hf_noise():
 
 class App(mglw.WindowConfig):
     resource_dir = "programs"
-    window_size = (3840, 2160)
+    window_size = (900, 600)
 
     def __init__(self, **kwargs):
         self.counter = 0
         self.time_passed = 0
+        self.first_measure = True
 
         self.id = 0
-        self.resolutions = [
-            (640, 360),
-            (800, 480),
-            (1280, 720),
-            (1920, 1080),
-            (3840, 2160),
-        ]
+        # self.resolutions = [
+        #     (640, 360),
+        #     (800, 480),
+        #     (1280, 720),
+        #     (1920, 1080),
+        #     (3840, 2160),
+        # ]
 
         super().__init__(**kwargs)
         self.quad = mglw.geometry.quad_fs()
@@ -99,13 +100,13 @@ class App(mglw.WindowConfig):
         self.safe_uniform("u_resolution", self.window_size)
         # uniforms
         self.theta = 0
-        self.density = 0
+        self.density = 100
         self.coverage = 1
-        self.safe_uniform("u_density", 150)
+        self.safe_uniform("u_density", self.density)
         self.safe_uniform("u_coverage", self.coverage)
 
         self.safe_uniform("u_phaseInfluence", 0.5)
-        self.safe_uniform("u_eccentrisy", 0.996)
+        self.safe_uniform("u_eccentrisy", 0.49)
         self.safe_uniform("u_phaseInfluence2", 0.5)
         self.safe_uniform("u_eccentrisy2", 0.49)
         self.safe_uniform("u_attenuation", 0.2)
@@ -160,9 +161,21 @@ class App(mglw.WindowConfig):
         self.time_passed += frame_time
         self.counter += 1
 
-        if self.time_passed > 100:
-            with open("time_measure_resolution2.txt", "a") as dist:
-                print(self.counter / self.time_passed, file=dist)
+        if self.time_passed > 120:
+            print(self.first_measure, self.coverage)
+            if self.first_measure:
+                self.first_measure = False
+
+            else:
+                with open("time_cov.txt", "a") as src:
+                    print(self.counter / self.time_passed, file=src)
+                self.coverage += 0.2
+                self.safe_uniform("u_coverage", self.coverage)
+
+            self.time_passed = 0
+            self.counter = 0
+
+        if self.coverage > 2.1:
             sys.exit()
 
 
