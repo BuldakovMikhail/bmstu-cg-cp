@@ -53,7 +53,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
             look = (0, 0.5, 1)
         else:
-            look = (look[0], look[1], look[2] + 0.0001)
+            look = (look[0], look[1] + 0.1, look[2] + 0.0001)
 
         density = self.densitySB.value()
         coverage = self.coverageSB.value()
