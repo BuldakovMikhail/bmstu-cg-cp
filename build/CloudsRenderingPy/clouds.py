@@ -110,7 +110,7 @@ class Clouds:
         self.safe_uniform("u_attenuation2", 0.1)
         self.safe_uniform("u_sunIntensity", 42)
         self.safe_uniform("u_sun_pos", (0, 0.5, 1))
-        self.safe_uniform("u_look_at", (0, 0.5, 1))
+        self.safe_uniform("u_look_at", (0, 0.6, 1))
 
         # self.safe_uniform('u_fog', 1)
         self.safe_uniform("u_ambient", 1)
