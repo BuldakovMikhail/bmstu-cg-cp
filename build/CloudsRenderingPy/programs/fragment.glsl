@@ -186,46 +186,9 @@ float dualHenyeyGreenstein(float g, float costh) {
 }
 
 float phaseFunction(float g, float costh) {
-  return dualHenyeyGreenstein(g, costh);
+  return HenyeyGreenstein(g, costh);
 }
 
-// vec3 MultipleOctaveScattering(float density, float mu) {
-//   float attenuation = 0.2;
-//   float contribution = 0.2;
-//   float phaseAttenuation = 0.5;
-
-//   float a = 1.0;
-//   float b = 1.0;
-//   float c = u_eccentrisy;
-//   float g = 0.85;
-//   const float scatteringOctaves = 4.0;
-  
-//   vec3 luminance = vec3(0.0);
-
-//   for (float i = 0.0; i < scatteringOctaves; i++) {
-//     float phaseFunction = phaseFunction(0.3 * c, mu);
-//     vec3 beers = exp(-density * EXTINCTION_MULT * a);
-
-//     luminance += b * phaseFunction * beers;
-
-//     a *= attenuation;
-//     b *= contribution;
-//     c *= (1.0 - phaseAttenuation);
-//   }
-//   return luminance;
-// }
-
-
-
-
-// vec3 calculateLightEnergy(vec3 position, vec3 sunDir, float mu) {
-  
-//   float density = cloudSampleDirectDensity(position, sunDir)* u_attenuation2;
-//   vec3 beersLaw = MultipleOctaveScattering(density, mu);
-//   vec3 powder = 1.0 - exp(-density * 2.0 * EXTINCTION_MULT);
-
-//   return beersLaw * mix(2.0 * powder, vec3(1.0), remap(mu, -1.0, 1.0, 0.0, 1.0));
-// }
 
 vec3 calculateLightEnergy(vec3 position, vec3 sunDir, float mu) {
   
