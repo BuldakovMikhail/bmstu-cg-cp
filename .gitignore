@@ -8,3 +8,11 @@ doc/tex/*.pdf
 *.bbl
 *.blg
 *.zip
+*.toc
+CloudsRendering
+*.xml
+*.iml
+clion-*
+*.bcf
+*.pyc
+*.bin

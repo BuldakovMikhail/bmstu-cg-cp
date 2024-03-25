@@ -1,1 +1,1 @@
-exit 4
+python3 main.py
